@@ -1,26 +1,36 @@
 import React, { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import UsersList from '../components/UsersList';
 import AddUserForm from '../components/AddUserForm';
 import UserDetails from '../components/UserDetails';
-import { Routes, Route } from 'react-router-dom';
 
 function Home() {
   const [localUsers, setLocalUsers] = useState([]);
 
-  const addLocalUser = user => {
+  const addLocalUser = (user) => {
     setLocalUsers([user, ...localUsers]);
+  };
+
+  const updateLocalUser = (updatedUser) => {
+    setLocalUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    );
   };
 
   return (
     <Routes>
-      {/* Faqja kryesore me listën e users */}
-      <Route path="/" element={<UsersList localUsers={localUsers} />} />
-
-      {/* Faqja për të shtuar user lokal */}
-      <Route path="/add-user" element={<AddUserForm addLocalUser={addLocalUser} />} />
-
-      {/* Faqja e detajeve për secilin user */}
-      <Route path="/users/:id" element={<UserDetails />} />
+      <Route
+        path="/"
+        element={<UsersList localUsers={localUsers} />}
+      />
+      <Route
+        path="/add-user"
+        element={<AddUserForm addLocalUser={addLocalUser} />}
+      />
+      <Route
+        path="/users/:id"
+        element={<UserDetails localUsers={localUsers} updateLocalUser={updateLocalUser} />}
+      />
     </Routes>
   );
 }

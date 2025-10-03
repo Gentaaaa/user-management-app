@@ -1,106 +1,125 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { setUsers, updateUser, deleteUser } from "../store/usersSlice";
-import { Link } from "react-router-dom";
-import { User, Mail, Building2, Trash2, Edit, Info, Plus, ArrowUpDown } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { addUser, updateUser, deleteUser, setUsers } from '../store/usersSlice';
+import { Link } from 'react-router-dom';
 
-function UsersList({ localUsers }) {
+function UsersList({ localUsers = [] }) {
   const dispatch = useDispatch();
-  const users = useSelector((state) => state.users.users);
-  const [search, setSearch] = useState("");
-  const [sortAsc, setSortAsc] = useState(true);
+  const users = useSelector(state => state.users ?? []); // Siguron array
 
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState('name');
+  const [asc, setAsc] = useState(true);
+
+  // Fetch users only once
   useEffect(() => {
-    fetch("https://jsonplaceholder.typicode.com/users")
-      .then((res) => res.json())
-      .then((data) => dispatch(setUsers(data)));
-  }, [dispatch]);
+    fetch('https://jsonplaceholder.typicode.com/users')
+      .then(res => res.json())
+      .then(data => {
+        // Heq duplicates bazuar në id
+        const allFetched = data.filter(fu => !users.some(u => u.id === fu.id));
+        if (allFetched.length) dispatch(setUsers([...users, ...allFetched]));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const allUsers = [...localUsers, ...users];
+  // Bashkon localUsers me users nga store, pa duplicates
+  const allUsers = [...users];
+  localUsers.forEach(lu => {
+    if (!allUsers.some(u => u.id === lu.id)) allUsers.push(lu);
+  });
 
+  // Filtron dhe sorton
   const filteredUsers = allUsers
-    .filter(
-      (u) =>
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
+    .filter(u =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase())
     )
-    .sort((a, b) =>
-      sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    );
+    .sort((a, b) => {
+      let aKey = sortKey === 'company' ? a.company?.name || '' : a[sortKey] || '';
+      let bKey = sortKey === 'company' ? b.company?.name || '' : b[sortKey] || '';
+      if (aKey < bKey) return asc ? -1 : 1;
+      if (aKey > bKey) return asc ? 1 : -1;
+      return 0;
+    });
 
-  const handleDelete = (id) => dispatch(deleteUser(id));
-  const handleUpdate = (user) => {
-    const newName = prompt("Enter new name", user.name);
-    if (newName) dispatch(updateUser({ ...user, name: newName }));
+  const handleDelete = id => dispatch(deleteUser(id));
+  const handleUpdate = user => {
+    const newName = prompt('Enter new name', user.name);
+    const newEmail = prompt('Enter new email', user.email);
+    if (newName && newEmail) {
+      dispatch(updateUser({ ...user, name: newName, email: newEmail }));
+    }
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+    <div className="p-4 md:p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
+
+      <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
         <input
-          className="border border-gray-300 p-3 rounded-xl w-full md:w-1/2 shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"
-          placeholder="🔍 Search by name or email..."
+          type="text"
+          placeholder="Search by name or email"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
+          className="border p-2 rounded w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
+
         <div className="flex gap-2">
-          <button
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl shadow transition"
-            onClick={() => setSortAsc(!sortAsc)}
+          <select
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value)}
+            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
-            <ArrowUpDown size={18} />
-            Sort {sortAsc ? "A-Z" : "Z-A"}
+            <option value="name">Name</option>
+            <option value="email">Email</option>
+            <option value="company">Company</option>
+          </select>
+
+          <button
+            onClick={() => setAsc(!asc)}
+            className="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
+          >
+            {asc ? 'A → Z' : 'Z → A'}
           </button>
+
           <Link
             to="/add-user"
-            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white px-4 py-2 rounded-xl shadow transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <Plus size={18} /> Add User
+            Add User
           </Link>
         </div>
       </div>
 
-      {/* User Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((u) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredUsers.map(u => (
           <div
             key={u.id}
-            className="bg-white rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1 p-5 flex flex-col justify-between"
+            className="bg-white p-4 rounded shadow hover:shadow-lg transition duration-200"
+            style={{ borderLeft: `5px solid hsl(${(u.id * 50) % 360}, 70%, 50%)` }} // ngjyra unike
           >
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <User size={20} className="text-blue-500" /> {u.name}
-              </h2>
-              <p className="text-gray-600 flex items-center gap-2 mt-2">
-                <Mail size={18} className="text-gray-400" /> {u.email}
-              </p>
-              {u.company?.name && (
-                <p className="text-gray-600 flex items-center gap-2 mt-1">
-                  <Building2 size={18} className="text-gray-400" /> {u.company.name}
-                </p>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="mt-4 flex gap-2">
+            <h2 className="text-lg font-bold mb-1 text-gray-800">{u.name}</h2>
+            <p className="text-gray-600 mb-1">{u.email}</p>
+            <p className="text-gray-500 mb-2">{u.company?.name}</p>
+            <div className="flex gap-2 flex-wrap">
               <button
-                className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-sm transition"
                 onClick={() => handleUpdate(u)}
+                className="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500"
               >
-                <Edit size={16} /> Update
+                Edit
               </button>
               <button
-                className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm transition"
                 onClick={() => handleDelete(u.id)}
+                className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
               >
-                <Trash2 size={16} /> Delete
+                Delete
               </button>
               <Link
                 to={`/users/${u.id}`}
-                className="flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm transition"
+                className="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
               >
-                <Info size={16} /> Details
+                Details
               </Link>
             </div>
           </div>

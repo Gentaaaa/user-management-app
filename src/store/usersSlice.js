@@ -1,18 +1,26 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
 const usersSlice = createSlice({
-  name: 'users',
-  initialState: { users: [] },
+  name: "users",
+  initialState: [],
   reducers: {
-    setUsers: (state, action) => { state.users = action.payload; },
-    updateUser: (state, action) => {
-      state.users = state.users.map(u => u.id === action.payload.id ? action.payload : u);
+    setUsers: (state, action) => {
+      return action.payload; // vendos gjithë users
     },
-    deleteUser: (state, action) => {
-      state.users = state.users.filter(u => u.id !== action.payload);
-    }
-  }
+    addUser: (state, action) => {
+      if (!state.some(u => u.id === action.payload.id)) {
+        state.unshift(action.payload);
+      }
+    },
+    updateUser: (state, action) => {
+      const index = state.findIndex(u => u.id === action.payload.id);
+      if (index !== -1) {
+        state[index] = action.payload;
+      }
+    },
+    deleteUser: (state, action) => state.filter(u => u.id !== action.payload),
+  },
 });
 
-export const { setUsers, updateUser, deleteUser } = usersSlice.actions;
+export const { addUser, updateUser, deleteUser, setUsers } = usersSlice.actions;
 export default usersSlice.reducer;

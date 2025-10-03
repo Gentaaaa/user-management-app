@@ -1,82 +1,78 @@
 import React, { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { addUser } from '../store/usersSlice';
 import { useNavigate } from 'react-router-dom';
 
-function AddUserForm({ addLocalUser }) {
+export default function AddUserForm({ existingUser }) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [website, setWebsite] = useState('');
-  const [street, setStreet] = useState('');
-  const [city, setCity] = useState('');
+  const users = useSelector(state => Array.isArray(state.users) ? state.users : []);
+
+  // Nëse kemi existingUser, e përdorim për editim
+  const [formData, setFormData] = useState({
+    name: existingUser?.name || '',
+    email: existingUser?.email || '',
+    phone: existingUser?.phone || '',
+    website: existingUser?.website || '',
+    address: {
+      street: existingUser?.address?.street || '',
+      city: existingUser?.address?.city || ''
+    }
+  });
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+    if (name === 'street' || name === 'city') {
+      setFormData(prev => ({
+        ...prev,
+        address: { ...prev.address, [name]: value }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
   const handleSubmit = e => {
     e.preventDefault();
-    if (!name || !email) return alert('Name and email are required');
 
-    // Krijo user-in lokal me të gjitha fushat
-    const newUser = {
-      id: Date.now(), // ID unike
-      name,
-      email,
-      phone,
-      website,
-      address: {
-        street,
-        city
-      }
-    };
+    // ID unik
+    const maxId = users.length > 0 ? Math.max(...users.map(u => u.id)) : 0;
+    const newUser = existingUser
+      ? { ...existingUser, ...formData } // edit
+      : { ...formData, id: maxId + 1 }; // new
 
-    addLocalUser(newUser);
-    navigate('/'); // kthehu te lista
+    dispatch(addUser(newUser));
+    navigate('/');
   };
 
   return (
-    <form className="max-w-md mx-auto p-4 border rounded shadow mt-4" onSubmit={handleSubmit}>
-      <h2 className="text-xl font-bold mb-4">Add New User</h2>
+    <div className="p-6 bg-gray-50 min-h-screen flex justify-center">
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-4">{existingUser ? 'Edit User' : 'Add User'}</h1>
 
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="Name*"
-        value={name}
-        onChange={e => setName(e.target.value)}
-      />
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="Email*"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-      />
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="Phone"
-        value={phone}
-        onChange={e => setPhone(e.target.value)}
-      />
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="Website"
-        value={website}
-        onChange={e => setWebsite(e.target.value)}
-      />
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="Street"
-        value={street}
-        onChange={e => setStreet(e.target.value)}
-      />
-      <input
-        className="border p-2 mb-2 w-full rounded"
-        placeholder="City"
-        value={city}
-        onChange={e => setCity(e.target.value)}
-      />
+        {['name','email','phone','website','street','city'].map(field => (
+          <input
+            key={field}
+            type="text"
+            name={field}
+            value={
+              field === 'street' || field === 'city'
+                ? formData.address[field]
+                : formData[field]
+            }
+            onChange={handleChange}
+            placeholder={field}
+            className="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        ))}
 
-      <button type="submit" className="bg-blue-600 text-white p-2 rounded mt-2 w-full hover:bg-blue-700">
-        Add User
-      </button>
-    </form>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+        >
+          {existingUser ? 'Save Changes' : 'Add User'}
+        </button>
+      </form>
+    </div>
   );
 }
-
-export default AddUserForm;
